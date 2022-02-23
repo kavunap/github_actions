@@ -1,36 +1,77 @@
-# This is a basic workflow to help you get started with Actions
+name : Laravel & PostgreSQL 
 
-name: CI
+on : 
+   push : 
+     branches : [main] 
+  pull_request : 
+     branches : [main] 
 
-# Controls when the workflow will run
-on:
-  # Triggers the workflow on push or pull request events but only for the main branch
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+jobs : 
+   container-job : 
+     runs-on : ubuntu-18.04 
 
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+    # all steps within the specified continental rather than on the VM host. 
+    container : 
+       image : php: 8.1-alpine 
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
-jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
+    services : 
+       postgres : 
+         image : mdillon / postgis: 10 
+        env : 
+           POSTGRES_DB : postgresdb 
+          POSTGRES_USER : postgresuser 
+          POSTGRES_PASSWORD : secret 
+          POSTGRES_HOST : postgres 
+        ports : 
+         : 5432 
+        #postgres container does not provide healthcheck and is required. 
+        options : --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5 
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
-    steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+    steps : 
+     --uses env : actions / checkout @ 
+      v1 : 
+         # Here we are specifying a container for the job, so we will use postgres for the host 
+        # If we run the job on a VM, it will be localhost. 
+        POSTGRES_HOST : postgres 
+        POSTGRES_PORT : $ {{job.services.postgres.ports [5432]}} 
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo Hello, world!
+  # Perform all steps on the VM 
+  #The service container uses the host port binding instead of the container network, so in the service name Access on the local host instead. 
+  vm-job : 
+     runs-on : ubuntu-18.04 
+    services : 
+       postgres : 
+         image : postgres: 14 
+        env : 
+           POSTGRES_DB : postgresdb 
+          POSTGRES_USER : postgresuser 
+          POSTGRES_PASSWORD : secret 
+          POSTGRES_HOST : postgres 
+        ports : 
+         --The 5432 / tcp 
+        # postgres container does not provide a healthcheck and is required. 
+        options : --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5 
+    
+    steps : 
+     --uses v1 : actions / checkout @ 
+     : uses actions Use Node.js 12.x 
+      : : node @ v1 
+      with - 
+         node-version : 12.x 
 
-      # Runs a set of commands using the runners shell
-      - name: Run a multi-line script
-        run: |
-          echo Add other actions to build,
-          echo test, and deploy your project.
+     - --prefer : Install composer dependencies 
+      run : dist 
+
+     : --name : Install npm dependencies 
+      run npm ci 
+    
+     : --name : Run Mix 
+      run npm run production 
+      
+     coverage - : Run PHPUnit tests 
+      run : vendor / bin / phpunit --no 
+      env : 
+         # Here we are specifying a container for the job, so we will use localhost for the host. 
+        # When running a job on a VM, it will be postgres. 
+        DB_HOST : localhost 
+        DB_PORT : $ {{job.services.postgres.ports [5432]}} # Get randomly assigned public ports 
